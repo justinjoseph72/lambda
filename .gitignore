@@ -1,0 +1,5 @@
+**/*.zip
+bootstrap
+**/.aws-sam/**
+commands.md
+
