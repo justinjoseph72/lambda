@@ -16,7 +16,8 @@ The project uses cloudformation template which will create the following resourc
 * A production stage for the api gateway
 * Api gateway key
 * Cloudwatch logs for the gateway
-* Invocation of the lambda function on the GET and POST method of the API
+* Dynamo db creation
+* Invocation of the lambda function on the GET and POST method of the API and interact with S3 bucket and dynamodb
 
 ### Deployment 
 #### Build Lambda function
@@ -100,3 +101,20 @@ make stackEvents
 ```
 make deleteStack
 ```
+
+
+### Api
+
+The lambda function get trigged for the following api invocation
+
+* GET /prod/dummy. All the orders in the dummy-order dynamo db table will be returned.
+* GET /prod/dummy?orderId=T343431. Items for specific order item will be returned
+* POST /prod/dummy will save the order provided in the json
+    ```
+    {
+    "orderId": "T34344",
+    "amount": 99.99,
+    "item": "Gadget"
+}
+```
+
