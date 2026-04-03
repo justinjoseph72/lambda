@@ -1,5 +1,6 @@
 ---
 name: commit-code
+# prettier-ignore
 description: A skill to check the code before commiting to ensure there are no hardcoded values, AWS credentials, and that the README.md file is updated with any new instructions or changes to the code.
 ---
 
