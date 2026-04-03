@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-lambda-go/lambdacontext"
 
+	db "first-excercise/internal/db"
 	svc "first-excercise/internal/svc"
 
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -26,6 +27,7 @@ func init() {
 	}
 
 	s3Client = s3.NewFromConfig(cfg)
+	db.Init(cfg)
 }
 
 func handler(ctx context.Context, event json.RawMessage) (svc.EventResponse, error) {
@@ -52,7 +54,7 @@ func handler(ctx context.Context, event json.RawMessage) (svc.EventResponse, err
 		log.Printf("Object key: %s, Size: %d bytes\n", *object.Key, object.Size)
 	}
 
-	resultData, err := svc.ProcessEvent(event)
+	resultData, err := svc.ProcessEvent(ctx, event)
 	if err != nil {
 		cause := fmt.Sprintf("Error processing event: %v", err)
 		return svc.BuildErrorResponse(cause), fmt.Errorf("failed to process event: %v", err)

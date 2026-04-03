@@ -1,4 +1,4 @@
-zipFileName := "myFunction6.zip"
+zipFileName := "myFunction10.zip"
 executableName := "bootstrap"
 stackName := "go-lambda-api-stack"
 # templateFile := "file://template.yaml"
@@ -8,7 +8,7 @@ build:
 	@echo " running target $@ Building Go executable for Linux AMD64"
 	GOOS=linux GOARCH=amd64 go build -o $(executableName) cmd/main.go
 	@echo "Zipping executable into $(zipFileName)"
-	zip -r $(zipFileName) . -x "*.go" -x ".git/*" -x ".gitignore" -x ".DS_Store" -x ".aws-sam/*"
+	zip -r $(zipFileName) . -x "*.md" -x ".git/*" -x ".gitignore" -x ".DS_Store" -x ".aws-sam/*" -x "Makefile" -x "buildCurl.sh" -x "template.yaml" -x "template-cw-loggin.yaml" -x ".claude/*"
 clean:
 	@echo "Cleaning up..."
 	rm $(executableName)

@@ -9,11 +9,12 @@ import (
 )
 
 type Event struct {
-	HttpMethod     string                 `json:"httpMethod"`
-	Path           string                 `json:"path"`
-	Body           string                 `json:"body"`
-	Headers        map[string]string      `json:"headers,omitempty"`
-	RequestContext map[string]interface{} `json:"requestContext,omitempty"`
+	HttpMethod            string                 `json:"httpMethod"`
+	Path                  string                 `json:"path"`
+	Body                  string                 `json:"body"`
+	Headers               map[string]string      `json:"headers,omitempty"`
+	RequestContext        map[string]interface{} `json:"requestContext,omitempty"`
+	QueryStringParameters map[string]string      `json:"queryStringParameters,omitempty"`
 }
 
 type Order struct {
@@ -45,4 +46,3 @@ func UnmarshalOrder(orderData string) (*Order, error) {
 	}
 	return &order, nil
 }
-

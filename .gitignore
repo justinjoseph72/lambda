@@ -2,4 +2,7 @@
 bootstrap
 **/.aws-sam/**
 commands.md
+**/.DS_Store
+**/.idea/**
+**/.vscode/**
 

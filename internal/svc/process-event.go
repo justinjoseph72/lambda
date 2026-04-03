@@ -1,7 +1,9 @@
 package svc
 
 import (
+	"context"
 	"encoding/json"
+	db "first-excercise/internal/db"
 	utils "first-excercise/internal/util"
 	"fmt"
 	"log"
@@ -15,7 +17,6 @@ type Result struct {
 }
 
 type EventResponse struct {
-	// IsBase64Encoded bool              `json:"isBase64Encoded"`
 	StatusCode int               `json:"statusCode"`
 	Body       string            `json:"body,omitempty"`
 	Headers    map[string]string `json:"headers,omitempty"`
@@ -28,7 +29,7 @@ type OrderResponse struct {
 	CreatedAt string  `json:"createdAt,omitempty"`
 }
 
-func ProcessEvent(event json.RawMessage) (*Result, error) {
+func ProcessEvent(ctx context.Context, event json.RawMessage) (*Result, error) {
 	log.Printf("Received event: %s", string(event))
 
 	eventData, err := utils.UnmarshalEvent(event)
@@ -42,20 +43,46 @@ func ProcessEvent(event json.RawMessage) (*Result, error) {
 		if eventData.HttpMethod == "GET" {
 			log.Printf("Received GET request for /dummy")
 
-			orderResponse := OrderResponse{
-				OrderId: "12345",
-				Amount:  100.00,
-				Item:    "Sample Item",
+			// Fetching based on orderId query parameter if present, otherwise scan all orders
+			if eventData.QueryStringParameters != nil {
+				log.Printf("Query parameters: %v", eventData.QueryStringParameters)
+				orderId := eventData.QueryStringParameters["orderId"]
+				if orderId != "" {
+					order, err := db.GetOrder(ctx, orderId)
+					if err != nil {
+						log.Printf("Error retrieving order: %v", err)
+						return &Result{
+							Success: false,
+							Message: fmt.Sprintf("failed to retrieve order: %v", err),
+						}, nil
+					}
+
+					orderJSON, _ := json.Marshal(order)
+					return &Result{
+						Success: true,
+						Message: string(orderJSON),
+					}, nil
+				}
 			}
-			orderJSON, _ := json.Marshal(orderResponse)
+			
+
+			orders, err := db.ScanOrders(ctx)
+			if err != nil {
+				log.Printf("Error scanning DynamoDB: %v", err)
+				return &Result{
+					Success: false,
+					Message: fmt.Sprintf("failed to retrieve orders: %v", err),
+				}, nil
+			}
+
+			ordersJSON, _ := json.Marshal(orders)
 			return &Result{
 				Success: true,
-				Message: string(orderJSON),
+				Message: string(ordersJSON),
 			}, nil
 		}
 
 		if eventData.HttpMethod == "POST" {
-
 			order, err := processOrder(eventData.Body)
 			if err != nil {
 				log.Printf("Error processing order: %v", err)
@@ -66,6 +93,15 @@ func ProcessEvent(event json.RawMessage) (*Result, error) {
 			}
 
 			log.Printf("Received order: %+v", order)
+
+			if err := db.PutOrder(ctx, order); err != nil {
+				log.Printf("Error saving order to DynamoDB: %v", err)
+				return &Result{
+					Success: false,
+					Message: fmt.Sprintf("failed to save order: %v", err),
+				}, nil
+			}
+
 			orderResponse := OrderResponse{
 				OrderId: order.OrderId,
 				Amount:  order.Amount,
@@ -87,7 +123,6 @@ func ProcessEvent(event json.RawMessage) (*Result, error) {
 }
 
 func processOrder(orderData string) (*utils.Order, error) {
-
 	order, err := utils.UnmarshalOrder(orderData)
 	if err != nil {
 		log.Printf("Error processing order: %v", err)
@@ -99,12 +134,11 @@ func processOrder(orderData string) (*utils.Order, error) {
 func BuildResponse(result Result) EventResponse {
 	log.Printf("Building response for result: %+v", result)
 	code := 200
-	if result.Success == false {
+	if !result.Success {
 		code = 400
 	}
 
 	response := EventResponse{
-		// IsBase64Encoded: false,
 		StatusCode: code,
 		Headers:    map[string]string{"Content-Type": "application/json"},
 		Body:       result.Message,

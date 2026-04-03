@@ -56,6 +56,31 @@ Resources:
                 Action: logs:CreateLogGroup
                 Resource: "*"
 
+        - PolicyName: lambda-dynamodb-access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:Scan
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                Resource: !GetAtt DummyTable.Arn
+
+
+  DummyTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: dummy-table
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: orderId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: orderId
+          KeyType: HASH
 
   LambdaLogGroup:
     Type: AWS::Logs::LogGroup
@@ -81,6 +106,7 @@ Resources:
         Variables:
           LOG_LEVEL: INFO
           SOURCE_BUCKET_NAME: !Ref LambdaS3Bucket
+          DYNAMODB_TABLE_NAME: !Ref DummyTable
 
   ApiGatewayCloudWatchRole:
     Type: AWS::IAM::Role
