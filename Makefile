@@ -31,6 +31,8 @@ createStack:
   --parameters \
     ParameterKey=LambdaS3Bucket,ParameterValue=${SOURCE_BUCKET} \
     ParameterKey=LambdaS3Key,ParameterValue=${zipFileName} \
+	ParameterKey=TempDocS3Bucket,ParameterValue=${TEMP_DOC_BUCKET} \
+	ParameterKey=FinalDocS3Bucket,ParameterValue=${FINAL_DOC_BUCKET} \
   --capabilities CAPABILITY_IAM
 
 deploy-updated-lambda: upload-lambda

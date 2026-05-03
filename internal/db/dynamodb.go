@@ -54,7 +54,7 @@ func PutOrder(ctx context.Context, order *util.Order) error {
 		return fmt.Errorf("failed to put item in DynamoDB: %v", err)
 	}
 
-	log.Printf("Order %d saved to DynamoDB", order.OrderId)
+	log.Printf("Order %s saved to DynamoDB", order.OrderId)
 	return nil
 }
 
