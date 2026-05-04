@@ -35,15 +35,15 @@ func handler(ctx context.Context, event json.RawMessage) (svc.EventResponse, err
 	log.Printf("Lambda request ID: %s", lc.AwsRequestID)
 	log.Printf("Received event: %s", string(event))
 	log.Printf(" the arn is %s", lc.InvokedFunctionArn)
-	bucket := os.Getenv("SOURCE_BUCKET_NAME")
-	if bucket == "" {
+	sourceBucket := os.Getenv("SOURCE_BUCKET_NAME")
+	if sourceBucket == "" {
 		log.Printf("SOURCE_BUCKET_NAME environment variable is not set")
 		return svc.BuildErrorResponse("SOURCE_BUCKET_NAME environment variable is not set"), fmt.Errorf("SOURCE_BUCKET_NAME environment variable is not set")
 	}
-	log.Printf("The configured bucket is %s \n", bucket)
+	log.Printf("The configured source bucket is %s \n", sourceBucket)
 
 	output, err := s3Client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
-		Bucket: &bucket,
+		Bucket: &sourceBucket,
 	})
 	if err != nil {
 		log.Printf("Error listing objects in bucket: %v", err)
@@ -54,7 +54,7 @@ func handler(ctx context.Context, event json.RawMessage) (svc.EventResponse, err
 		log.Printf("Object key: %s, Size: %d bytes\n", *object.Key, object.Size)
 	}
 
-	resultData, err := svc.ProcessEvent(ctx, event)
+	resultData, err := svc.ProcessEvent(ctx, event, s3Client)
 	if err != nil {
 		cause := fmt.Sprintf("Error processing event: %v", err)
 		return svc.BuildErrorResponse(cause), fmt.Errorf("failed to process event: %v", err)

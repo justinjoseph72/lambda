@@ -7,8 +7,13 @@ import (
 	utils "first-excercise/internal/util"
 	"fmt"
 	"log"
+	"net/url"
+	"os"
 	"path"
 	"time"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 type Result struct {
@@ -23,13 +28,13 @@ type EventResponse struct {
 }
 
 type OrderResponse struct {
-	OrderId string  `json:"orderId"`
-	Amount  float64 `json:"amount"`
-	Item    string  `json:"item"`
+	OrderId   string  `json:"orderId"`
+	Amount    float64 `json:"amount"`
+	Item      string  `json:"item"`
 	CreatedAt string  `json:"createdAt,omitempty"`
 }
 
-func ProcessEvent(ctx context.Context, event json.RawMessage) (*Result, error) {
+func ProcessEvent(ctx context.Context, event json.RawMessage, s3Client *s3.Client) (*Result, error) {
 	log.Printf("Received event: %s", string(event))
 
 	eventData, err := utils.UnmarshalEvent(event)
@@ -63,8 +68,25 @@ func ProcessEvent(ctx context.Context, event json.RawMessage) (*Result, error) {
 						Message: string(orderJSON),
 					}, nil
 				}
+				fileKey := eventData.QueryStringParameters["fileKey"]
+				if fileKey != "" {
+					sourceKey := url.QueryEscape(fileKey)
+					sourcePath := path.Join(os.Getenv("SOURCE_BUCKET_NAME"), sourceKey)
+					log.Printf("Received fileKey query parameter: %s escaped: %s", fileKey, sourceKey)
+					newKey := fmt.Sprintf("%s/%s-%d", "copy", sourceKey, time.Now().Nanosecond())
+					// Here you would add logic to retrieve the file from S3 using the fileKey
+					// For demonstration, we'll just return a success message with the fileKey
+					s3Client.CopyObject(ctx, &s3.CopyObjectInput{
+						Bucket:     aws.String(os.Getenv("DESTINATION_BUCKET_NAME")),
+						CopySource: aws.String(sourcePath),
+						Key:        aws.String(newKey),
+					})
+					return &Result{
+						Success: true,
+						Message: fmt.Sprintf("Received request for file with key: %s and copied to destination bucket", newKey),
+					}, nil
+				}
 			}
-			
 
 			orders, err := db.ScanOrders(ctx)
 			if err != nil {
@@ -103,9 +125,9 @@ func ProcessEvent(ctx context.Context, event json.RawMessage) (*Result, error) {
 			}
 
 			orderResponse := OrderResponse{
-				OrderId: order.OrderId,
-				Amount:  order.Amount,
-				Item:    order.Item,
+				OrderId:   order.OrderId,
+				Amount:    order.Amount,
+				Item:      order.Item,
 				CreatedAt: time.Now().Format("2006-01-02T15:04:05Z"),
 			}
 			orderJSON, _ := json.Marshal(orderResponse)

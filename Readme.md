@@ -24,6 +24,8 @@ The project uses cloudformation template which will create the following resourc
 The project uses a Makefile which abstracts the commands required to run and deploy the application in AWS.
 The Lambda function uses Amazon linux 2023 runtime and runs the binary file created by the go code directly as handler.
 The binary is packaged as a zip file and saved to an S3 bucket. The S3 bucket name is set in the environment variable `SOURCE_BUCKET` and is used by the Make file directly.
+The lambda also reads from an S3 bucket and copies files to a destination bucket.
+The source document bucket is read from `TEMP_DOC_BUCKET` environment variable and is copied to S3 bucket set in `FINAL_DOC_BUCKET` evironment variable.
 
 ```
 export SOURCE_BUCKET=<the bucket name>
@@ -109,6 +111,7 @@ The lambda function get trigged for the following api invocation
 
 * GET /prod/dummy. All the orders in the dummy-order dynamo db table will be returned.
 * GET /prod/dummy?orderId=T343431. Items for specific order item will be returned
+* GET /prod/dummy?fileKey=T343431. The file with key T34341 in TEMP_DOC_BUCKET will be copied to FINAL_DOC_BUCKET in copy folder
 * POST /prod/dummy will save the order provided in the json
     ```
     {
