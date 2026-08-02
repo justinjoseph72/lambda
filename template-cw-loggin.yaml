@@ -14,6 +14,9 @@ Parameters:
   FinalDocS3Bucket:
     Type: String
     Description: S3 bucket containing the Lambda Docker image (ECR compatible)     
+  EventSourceS3Key:
+    Type: String
+    Description: S3 key (path) for the Lambda Docker image (ECR compatible)  
 
 Resources:
   LambdaExecutionRole:
@@ -118,6 +121,76 @@ Resources:
                   - dynamodb:UpdateItem
                   - dynamodb:DeleteItem
                 Resource: !GetAtt DummyTable.Arn
+  StreamLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole   
+      Path: "/"         
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole      
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+              - Effect: Allow
+                Action:
+                  - dynamodb:DescribeStream
+                  - dynamodb:GetRecords
+                  - dynamodb:GetShardIterator
+                  - dynamodb:ListStreams
+                Resource: !GetAtt DummyTable.StreamArn
+        - PolicyName: deny-log-group-creation
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Deny
+                Action: logs:CreateLogGroup
+                Resource: "*"
+
+
+  EventSourceDummyTableStream:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 1
+      Enabled: True
+      EventSourceArn: !GetAtt DummyTable.StreamArn
+      FunctionName: !GetAtt ProcessEventLambda.Arn
+      StartingPosition: LATEST
+
+  ProcessEventLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/process-event-lambda-${AWS::StackName}'
+      RetentionInDays: 14
+
+  ProcessEventLambda:
+    Type: AWS::Lambda::Function
+    DependsOn: ProcessEventLambdaLogGroup
+    Properties:
+      FunctionName: !Sub 'process-event-lambda-${AWS::StackName}'
+      Runtime: python3.12
+      Timeout: 300
+      Handler: eventSource.handler
+      Role: !GetAtt StreamLambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !Ref LambdaS3Bucket
+        S3Key: !Ref EventSourceS3Key
+
 
 
   DummyTable:
@@ -131,6 +204,8 @@ Resources:
       KeySchema:
         - AttributeName: orderId
           KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES    
 
   LambdaLogGroup:
     Type: AWS::Logs::LogGroup

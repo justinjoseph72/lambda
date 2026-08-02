@@ -1,4 +1,5 @@
 zipFileName := "myFunction11.zip"
+eventSourceZipFileName := "eventSource.zip"
 executableName := "bootstrap"
 stackName := "go-lambda-api-stack"
 # templateFile := "file://template.yaml"
@@ -8,21 +9,29 @@ build:
 	@echo " running target $@ Building Go executable for Linux AMD64"
 	GOOS=linux GOARCH=amd64 go build -o $(executableName) cmd/main.go
 	@echo "Zipping executable into $(zipFileName)"
-	zip -r $(zipFileName) . -x "*.md" -x ".git/*" -x ".gitignore" -x ".DS_Store" -x ".aws-sam/*" -x "Makefile" -x "buildCurl.sh" -x "template.yaml" -x "template-cw-loggin.yaml" -x ".claude/*"
+	zip -r $(zipFileName) . -x "*.md" -x ".git/*" -x ".gitignore" -x ".DS_Store" -x ".aws-sam/*" -x "Makefile" -x "buildCurl.sh" -x "template.yaml" -x "template-cw-loggin.yaml" -x ".claude/*" -x scripts/*
+
+build-event-source:
+	@echo " running target $@ Building event source zip file"
+	zip -j $(eventSourceZipFileName) scripts/eventSource.py
+
+
 clean:
 	@echo "Cleaning up..."
 	rm $(executableName)
 	rm *.zip
 
-upload-lambda: build
-	aws s3 cp $(zipFileName) s3://$(SOURCE_BUCKET)/$(zipFileName)	
+upload-lambda: build build-event-source
+	aws s3 cp $(zipFileName) s3://$(SOURCE_BUCKET)/$(zipFileName)
+	aws s3 cp $(eventSourceZipFileName) s3://$(SOURCE_BUCKET)/$(eventSourceZipFileName)
 
 listS3:
 	echo ${SOURCE_BUCKET}
 	aws s3 ls s3://$(SOURCE_BUCKET)
 
 remove-lambda:
-	aws s3 rm s3://$(SOURCE_BUCKET)/$(zipFileName)	
+	aws s3 rm s3://$(SOURCE_BUCKET)/$(zipFileName)
+	aws s3 rm s3://$(SOURCE_BUCKET)/$(eventSourceZipFileName)
 
 createStack:
 	aws cloudformation create-stack \
@@ -31,6 +40,7 @@ createStack:
   --parameters \
     ParameterKey=LambdaS3Bucket,ParameterValue=${SOURCE_BUCKET} \
     ParameterKey=LambdaS3Key,ParameterValue=${zipFileName} \
+	ParameterKey=EventSourceS3Key,ParameterValue=${eventSourceZipFileName} \
 	ParameterKey=TempDocS3Bucket,ParameterValue=${TEMP_DOC_BUCKET} \
 	ParameterKey=FinalDocS3Bucket,ParameterValue=${FINAL_DOC_BUCKET} \
   --capabilities CAPABILITY_IAM
@@ -42,6 +52,7 @@ deploy-updated-lambda: upload-lambda
   --parameters \
 	ParameterKey=LambdaS3Bucket,ParameterValue=${SOURCE_BUCKET} \
 	ParameterKey=LambdaS3Key,ParameterValue=${zipFileName} \
+	ParameterKey=EventSourceS3Key,ParameterValue=${eventSourceZipFileName} \
 	ParameterKey=TempDocS3Bucket,ParameterValue=${TEMP_DOC_BUCKET} \
 	ParameterKey=FinalDocS3Bucket,ParameterValue=${FINAL_DOC_BUCKET} \
   --capabilities CAPABILITY_IAM 

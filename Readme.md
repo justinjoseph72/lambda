@@ -113,11 +113,16 @@ The lambda function get trigged for the following api invocation
 * GET /prod/dummy?orderId=T343431. Items for specific order item will be returned
 * GET /prod/dummy?fileKey=T343431. The file with key T34341 in TEMP_DOC_BUCKET will be copied to FINAL_DOC_BUCKET in copy folder
 * POST /prod/dummy will save the order provided in the json
-    ```
-    {
+```
+{
     "orderId": "T34344",
     "amount": 99.99,
     "item": "Gadget"
 }
 ```
+
+### Dynamodb stream processing
+The dynamodb table will not stream the changes. This will be consumed by the lambda in file scripts/list_aws_resources.py
+There is a lambda function ProcessEventLambda created for this which has roles to act on the stream data and is mapped to the stream using event source mapping EventSourceDummyTableStream
+
 
